@@ -7,7 +7,7 @@ use anchor_spl::{
     },
 };
 
-use crate::Escrow;
+use crate::state::Escrow;
 
 #[derive(Accounts)]
 pub struct Refund<'info> {
@@ -49,7 +49,7 @@ pub struct Refund<'info> {
 }
 
 impl<'info> Refund<'info> {
-    pub fn withdraw_and_close(&mut self) -> Result<()> {
+    pub fn refund_and_close(&mut self) -> Result<()> {
         let seed = self.escrow.seed.to_le_bytes();
         let bump = [self.escrow.bump];
         let signer_seeds = [&[
@@ -77,13 +77,13 @@ impl<'info> Refund<'info> {
         let accounts = CloseAccount {
             account: self.vault.to_account_info(),
             destination: self.maker.to_account_info(),
-            authority: self.maker.to_account_info(),
+            authority: self.escrow.to_account_info(),
         };
 
         let ctx = CpiContext::new_with_signer(
             self.token_program.to_account_info(),
             accounts,
-            &signer_seeds
+            &signer_seeds,
         );
 
         close_account(ctx)

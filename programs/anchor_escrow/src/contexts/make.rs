@@ -1,27 +1,29 @@
 use anchor_lang::prelude::*;
-use anchor_spl::{associated_token::AssociatedToken, token_interface::{transfer_checked, Mint, TokenAccount, TokenInterface, TransferChecked}};
+use anchor_spl::{
+    associated_token::AssociatedToken,
+    token_interface::{transfer_checked, Mint, TokenAccount, TokenInterface, TransferChecked},
+};
 
-use crate::Escrow;
+use crate::state::Escrow;
 
 #[derive(Accounts)]
 #[instruction(seed: u64)]
-pub struct Make<'info> {
+pub struct Make<'info>  {
     #[account(mut)]
     maker: Signer<'info>,
 
     #[account(
         mint::token_program = token_program,
     )]
-    mint_a : InterfaceAccount<'info, Mint>,
+    mint_a: InterfaceAccount<'info, Mint>,
 
     #[account(
         mint::token_program = token_program,
     )]
-    mint_b : InterfaceAccount<'info, Mint>,
+    mint_b: InterfaceAccount<'info, Mint>,
 
     #[account(
         mut,
-        // payer = maker,
         associated_token::mint = mint_a,
         associated_token::authority = maker,
         associated_token::token_program = token_program
@@ -38,7 +40,7 @@ pub struct Make<'info> {
     escrow: Account<'info, Escrow>,
 
     #[account(
-        init_if_needed,
+        init,
         payer = maker,
         associated_token::mint = mint_a,
         associated_token::authority = escrow,
@@ -51,14 +53,14 @@ pub struct Make<'info> {
 }
 
 impl<'info> Make<'info> {
-    pub fn save_escrow(&mut self, seed: u64, receive: u64, bump: u8) -> Result<()> {
-        self.escrow.set_inner( Escrow {
+    pub fn save_escrow(&mut self, seed: u64, receive: u64, bumps: &MakeBumps) -> Result<()> {
+        self.escrow.set_inner(Escrow {
             seed,
             maker: self.maker.key(),
             mint_a: self.mint_a.key(),
             mint_b: self.mint_b.key(),
             receive,
-            bump,
+            bump: bumps.escrow,
         });
         Ok(())
     }
@@ -68,14 +70,10 @@ impl<'info> Make<'info> {
             from: self.maker_ata_a.to_account_info(),
             mint: self.mint_a.to_account_info(),
             to: self.vault.to_account_info(),
-            authority: self.escrow.to_account_info(),
+            authority: self.maker.to_account_info(),
         };
 
-        let ctx = CpiContext::new_with_signer(
-            self.token_program.to_account_info(),
-            accounts,
-            &[],
-        );
+        let ctx = CpiContext::new(self.token_program.to_account_info(), accounts);
 
         transfer_checked(ctx, amount, self.mint_a.decimals)
     }

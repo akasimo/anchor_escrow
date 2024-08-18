@@ -13,7 +13,7 @@ pub mod anchor_escrow {
     use super::*;
 
     pub fn make(ctx: Context<Make>, seed: u64, amount: u64, receive: u64) -> Result<()> {
-        ctx.accounts.save_escrow(seed, receive, ctx.bumps.escrow)?;
+        ctx.accounts.save_escrow(seed, receive, &ctx.bumps)?;
         ctx.accounts.deposit_to_vault(amount)
     }
 
@@ -23,6 +23,6 @@ pub mod anchor_escrow {
     }
 
     pub fn refund(ctx: Context<Refund>) -> Result<()> {
-        ctx.accounts.withdraw_and_close()
+        ctx.accounts.refund_and_close()
     }
 }

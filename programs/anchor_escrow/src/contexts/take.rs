@@ -7,7 +7,7 @@ use anchor_spl::{
     },
 };
 
-use crate::Escrow;
+use crate::state::Escrow;
 
 #[derive(Accounts)]
 pub struct Take<'info> {
@@ -56,7 +56,7 @@ pub struct Take<'info> {
         mut,
         close = maker,
         seeds = [b"escrow", maker.key().as_ref(), escrow.seed.to_le_bytes().as_ref()],
-        bump
+        bump = escrow.bump
     )]
     escrow: Account<'info, Escrow>,
 
@@ -78,14 +78,10 @@ impl<'info> Take<'info> {
             from: self.taker_ata_b.to_account_info(),
             mint: self.mint_b.to_account_info(),
             to: self.maker_ata_b.to_account_info(),
-            authority: self.escrow.to_account_info(),
+            authority: self.taker.to_account_info(),
         };
 
-        let ctx = CpiContext::new_with_signer(
-            self.token_program.to_account_info(),
-            accounts,
-            &[],
-        );
+        let ctx = CpiContext::new(self.token_program.to_account_info(), accounts);
 
         transfer_checked(ctx, self.escrow.receive, self.mint_b.decimals)
     }
@@ -118,13 +114,13 @@ impl<'info> Take<'info> {
         let accounts = CloseAccount {
             account: self.vault.to_account_info(),
             destination: self.maker.to_account_info(),
-            authority: self.maker.to_account_info(),
+            authority: self.escrow.to_account_info(),
         };
 
         let ctx = CpiContext::new_with_signer(
             self.token_program.to_account_info(),
             accounts,
-            &signer_seeds
+            &signer_seeds,
         );
 
         close_account(ctx)
